@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Accelerometer</string>
+
+    <string name="what">What do you want to do?</string>
+    <string name="error_parsing_data">An error occurred while parsing the data.</string>
+    <string name="deleted">All data deleted.</string>
+
+    <string-array name="options">
+        <item>Send</item>
+        <item>Delete</item>
+    </string-array>
+
+    <string-array name="column_titles">
+        <item>Timestamp</item>
+        <item>x-axis</item>
+        <item>y-axis</item>
+        <item>z-axis</item>
+    </string-array>
+</resources>
