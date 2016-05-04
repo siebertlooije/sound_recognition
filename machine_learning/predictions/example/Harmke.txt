@@ -1,0 +1,1 @@
+{"events": [{"t_end": 1462398192.0, "t_start": 1462398112.0, "label": "snoring"}, {"t_end": 1462394581.0, "t_start": 1462393432.0, "label": "traffic"}], "id": "55001f9e3b0d7da90d5128a479fe00397b0764d0", "user": "Harmke"}
