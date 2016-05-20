@@ -3,6 +3,7 @@ import hashlib
 import time
 import datetime
 
+
 def timeStamp(s):
     return time.mktime(datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S,%f").timetuple())
 
@@ -30,8 +31,6 @@ if __name__=="__main__":
             },
         ]
     ]
-
-
 
     for user, events in zip(users, event_data):
         hash.update(str(time.time()) + user)
