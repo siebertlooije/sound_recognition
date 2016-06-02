@@ -76,8 +76,9 @@ def plotstft(audiopath, binsize=2**10, plotpath=None, colormap="jet"):
 
 
             plt.figure(figsize=(15, 7.5))
-            plt.imshow(np.transpose(ims), origin="lower", aspect="auto", cmap=colormap, interpolation="none")
+            plt.imshow(np.transpose(ims), origin="lower", aspect="auto", cmap='Greys_r', interpolation="none")
             cur_axes = plt.gca()
+	    cur_axes.set_axis_bgcolor("black")
             cur_axes.axes.get_xaxis().set_visible(False)
             cur_axes.axes.get_yaxis().set_visible(False)
            # plt.xlim([0, timebins-1])
