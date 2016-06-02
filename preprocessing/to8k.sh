@@ -1,0 +1,1 @@
+for FILE in */*.wav; do echo "sox -V 3 '$FILE' -b 16 -c 1 'resampled/$FILE' rate 8k"; sox "$FILE" -b 16 -c 1 "resampled/$FILE" rate 8k; done
