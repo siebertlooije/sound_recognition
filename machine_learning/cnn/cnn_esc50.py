@@ -4,10 +4,15 @@ from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2
 from keras.optimizers import SGD
 import cv2, numpy as np
 from PIL import Image
+import cPickle as pickle
+from keras.utils.np_utils import to_categorical
+
+
+from random import shuffle
 
 def VGG_16(weights_path=None):
     model = Sequential()
-    model.add(ZeroPadding2D((1,1),input_shape=(3,216,256)))   #0
+    model.add(ZeroPadding2D((1,1),input_shape=(3,108,108)))   #0
     model.add(Convolution2D(64, 3, 3, activation='relu'))       #1
     model.add(ZeroPadding2D((1,1)))                             #2
     model.add(Convolution2D(64, 3, 3, activation='relu'))       #3
@@ -35,13 +40,12 @@ def VGG_16(weights_path=None):
     model.add(Convolution2D(512, 3, 3, activation='relu'))      #22
     model.add(MaxPooling2D((1,1), strides=(1,1)))               #23
 
-    model.add(ZeroPadding2D((2,2)))                             #24
+    model.add(ZeroPadding2D((1,1)))                             #24
     model.add(Convolution2D(512, 3, 3, activation='relu'))      #25
     model.add(ZeroPadding2D((1,1)))                             #26
     model.add(Convolution2D(512, 3, 3, activation='relu'))      #27
     model.add(ZeroPadding2D((1,1)))                             #28
     model.add(Convolution2D(512, 3, 3, activation='relu'))      #29
-    #model.add(MaxPooling2D((2,2), strides=(2,2)))               #30
 
     #model.add(Flatten())                                        #31
     #model.add(Dense(4096, activation='relu'))                   #32
@@ -55,53 +59,97 @@ def VGG_16(weights_path=None):
 
     return model
 
-if __name__ == "__main__":
-    import cPickle as pickle
 
+def load_esc_coch():
+    dataX, dataY = pickle.load(open('../../data/coch_ts.pkl'))
+
+    all_data = zip(dataX, dataY)
+    shuffle(all_data)
+
+    dataX, dataY = zip(*all_data)
+    dataX = np.asarray(dataX, dtype=np.float64)
+    dataY = np.asarray(dataY, dtype='int8')
+
+    print dataX.shape
+    dataX = dataX.transpose((0, 3, 1, 2))
+    dataX[:, 0, :, :] -= 103.939
+    dataX[:, 1, :, :] -= 116.779
+    dataX[:, 2, :, :] -= 123.68
+
+    dataX /= np.max(np.abs(dataX))
+
+    dataY = to_categorical(dataY)
+
+    N = dataX.shape[0]
+
+    trainX = dataX[:.8*N]
+    trainY = dataY[:.8*N]
+
+    testX = dataX[.8*N:]
+    testY = dataY[.8*N:]
+
+    return trainX, trainY, testX, testY
+
+
+def load_esc():
+    dataX, dataY = pickle.load(open('../../data/coch_ts.pkl'))
+
+    dataX = np.asarray(dataX, np.float64)
+    dataX[:, 0, :, :] -= 103.939
+    dataX[:, 1, :, :] -= 116.779
+    dataX[:, 2, :, :] -= 123.68
+
+    dataX /= 255.
+
+    data = zip(dataX, dataY)
+
+
+    shuffle(data)
+
+    dataX, dataY = zip(*data)
+    dataX = np.asarray(dataX)
+    dataY = to_categorical(np.asarray(dataY, dtype='int8'))
+
+    trainX, trainY = dataX[:1700], dataY[:1700]
+    testX, testY = dataX[1700:], dataY[1700:]
+
+    return trainX, trainY, testX, testY
+
+if __name__ == "__main__":
+    print 'loading data...'
+    trainX, trainY, testX, testY = load_esc_coch()
+
+    print 'loadig model weights'
     model = VGG_16('vgg16_weights.h5')
 
+    print 'building rest of network'
     model.add(MaxPooling2D((2,2), strides=(2,2)))               #30
     model.add(Flatten())
     model.add(Dense(1024, activation='relu'))
     model.add(Dropout(0.5))
     model.add(Dense(1024, activation='relu'))
     model.add(Dropout(0.5))
-    model.add(Dense())
+    model.add(Dense(50, activation='softmax'))
 
-    sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
-    model.compile(optimizer=sgd, loss='categorical_crossentropy')
+    print 'compiling model'
+    sgd = SGD(lr=0.0001, decay=1e-5, momentum=0.9, nesterov=True)
+    model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
 
-    feature_data = {}
+    print 'fitting to train data'
+    '''
+    b_sz = 4
+    for epoch in range(20):
+        for b_idx in range(trainX.shape[0] / b_sz):
+            bX = trainX[b_idx * b_sz:(b_idx+1) * b_sz]
+            bY = testY[b_idx * b_sz:(b_idx+1) * b_sz]
 
-    features = []
-    labels = []
-    for i, line in enumerate(open('../toolbox/labels.txt')):
-        path, label = line.split()
-        try:
-            im = np.asarray(Image.open(path.replace('/crops', '/crops/letters')), dtype=np.float32)
-            if im.shape[0] < 10 or im.shape[1] < 10:
-                continue
-        except IOError:
-            print(path + ' gives trouble...')
-            continue
+            model.train_on_batch(bX, bY)
+    '''
+    model.fit(trainX, trainY, nb_epoch=100, batch_size=32)
+    score = model.evaluate(testX, testY, batch_size=32)
 
-        im = im[:, :, ::-1]
-        im[:, :, 0] -= 103.939
-        im[:, :, 1] -= 116.779
-        im[:, :, 2] -= 123.68
-
-        im = im.transpose((2, 0, 1))
-
-        # run lasagne
-        print "Computing keras result... Im shape:", im.shape,
-        keras_result = model.predict(im.reshape((1, im.shape[0], im.shape[1], im.shape[2])))
-        print 'result shape', keras_result.shape
-        features.append(np.mean(keras_result, axis=(2, 3)))
-        labels.append(int(label))
-
-    feature_file = open('c_features_keras.pkl', 'wb')
-    pickle.dump((np.asarray(features), np.asarray(labels, dtype='int64')), feature_file)
-    feature_file.close()
+    print 'Done: '
+    print score
 
     #out = model.predict(im)
     #print np.argmax(out)
