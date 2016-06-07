@@ -16,19 +16,6 @@ from random import shuffle
 
 from random import shuffle
 
-idx_to_label = ['Dog', 'Rooster', 'Pig', 'Cow', 'Frog', 'Cat',
-                'Hen', 'Insects', 'Sheep', 'Crow', 'Rain', 'Sea waves',
-                'Crackling fire', 'Crickets', 'Chirping birds',
-                'Water drops', 'Wind', 'Pouring water', 'Toilet flush',
-                'Thunderstorm', 'Crying baby', 'Sneezing', 'Clapping',
-                'Breathing', 'Coughing', 'Footsteps', 'Laughing',
-                'Brushing teeth', 'Snoring', 'Drinking - sipping'
-                'Door knock', 'Mouse click', 'Keyboard typing',
-                'Door - wood creaks', 'Can opening', 'Washing machine',
-                'Vacuum cleaner', 'Clock alarm', 'Clock tick'
-                'Glass breaking', 'Helicopter', 'Chainsaw', 'Siren', 'Car Horn',
-                'Engine', 'Train', 'Curch bells', 'Airplane', 'Fireworks',
-                'Hand saw']
 
 def load_esc():
     trainX, trainY = pickle.load(open('../../data/esc50_train.pkl'))
@@ -54,10 +41,10 @@ def load_esc():
     testX, testY = dataX[1700:], dataY[1700:]
     '''
 
-    return trainX.reshape((trainX.shape[0], 1, 108, 108)) / 255., trainY, testX.reshape(testX.shape[0], 1, 108, 108) / 255., testY, test_labels
+    return trainX.reshape((trainX.shape[0], 1, 109, 115)) / 255., trainY, testX.reshape(testX.shape[0], 1, 109, 115) / 255., testY, test_labels
 
 def load_esc_coch():
-    dataX, dataY = pickle.load(open('../../data/coch_ts.pkl'))
+    dataX, dataY = pickle.load(open('../../preprocessing/chochs.pkl'))
 
     all_data = zip(dataX, dataY)
     shuffle(all_data)
@@ -95,8 +82,8 @@ def load_esc_coch():
 
 if __name__ == "__main__":
     print 'loading data...'
-    cochs = False
-    load_w = True
+    cochs = True
+    load_w = False
 
     if cochs:
         trainX, trainY, testX, testY, test_labels = load_esc_coch()
@@ -106,20 +93,20 @@ if __name__ == "__main__":
     model = Sequential()
 
     print 'building rest of network'
-    model.add(Convolution2D(32, 7, 7, activation='relu', input_shape=(trainX.shape[1], 108, 108)))
-    model.add(MaxPooling2D((2, 2), strides=(2, 2)))
-    model.add(Convolution2D(64, 5, 5, activation='relu'))
-    model.add(Convolution2D(64, 5, 5, activation='relu'))
-    model.add(MaxPooling2D((2, 2), strides=(2, 2)))
-    model.add(Convolution2D(128, 3, 3, activation='relu'))
-    model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+    model.add(Convolution2D(32, 7, 7, activation='relu', input_shape=(trainX.shape[1], 109, 115))) # 102 x 102
+    model.add(MaxPooling2D((2, 2), strides=(2, 2)))         # 51 x 51
+    model.add(Convolution2D(64, 5, 5, activation='relu'))   # 47 x 47
+    model.add(Convolution2D(64, 5, 5, activation='relu'))   # 43 x 43
+    model.add(MaxPooling2D((2, 2), strides=(2, 2)))         # 21 x 21
+    model.add(Convolution2D(128, 3, 3, activation='relu'))  # 19 x 19
+    model.add(MaxPooling2D((2, 2), strides=(1, 1)))         # 19 x 1
 
     model.add(Flatten())
-    model.add(Dense(1024, activation='relu'))
+    model.add(Dense(512, activation='relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(1024, activation='relu'))
+    model.add(Dense(512, activation='relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(50, activation='softmax'))
+    model.add(Dense(trainY.shape[1], activation='softmax'))
 
     print 'compiling model'
 
@@ -144,19 +131,25 @@ if __name__ == "__main__":
         plt.imshow(confusion_matrix)
         plt.show()
 
-
+    best_score = 0
     if cochs:
         datagen = ImageDataGenerator(
             width_shift_range=.2,
-            height_shift_range=.1
+            height_shift_range=.2,
+            fill_mode='constant'
         )
         datagen.fit(trainX)
         print 'fitting to train data'
         for _ in range(50):
-            model.fit_generator(datagen.flow(trainX, trainY, batch_size=32), samples_per_epoch=len(trainX), nb_epoch=100)
-            model.save_weights('cnn_homemade_coch.h5', overwrite=True)
-            score = model.evaluate(testX, testY, batch_size=32)
-            print 'Test accuracy: ', score[1]
+            model.fit_generator(datagen.flow(trainX, trainY, batch_size=32, shuffle=True),
+                                samples_per_epoch=len(trainX), nb_epoch=100,
+                                verbose=0)
+            _, score = model.evaluate(testX, testY, batch_size=32, verbose=0)
+            if score > best_score:
+                print 'New best score!'
+                best_score = score
+                model.save_weights('cnn_homemade_coch.h5', overwrite=True)
+            print 'Test accuracy: ', score
     else:
         print 'fitting to train data'
         for _ in range(10):
