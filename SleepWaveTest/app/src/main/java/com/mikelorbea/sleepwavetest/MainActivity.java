@@ -32,7 +32,7 @@ public class MainActivity extends Activity {
         final Button stop = (Button) findViewById(R.id.stop);
         final TextView text = (TextView) findViewById(R.id.textView);
 
-        final String url = "https://qtjspngw.p50.weaved.com/upload";
+        final String url = "http://sleepwave.ddns.net/upload";
 
         start.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -49,7 +49,7 @@ public class MainActivity extends Activity {
                 try {
                     mRecorder.prepare();
                 } catch (IOException e) {
-                    Log.e("Camera Error", "prepare() failed");
+                    Log.e("Recorder Error", "prepare() failed");
                 }
                 mRecorder.start();
 
